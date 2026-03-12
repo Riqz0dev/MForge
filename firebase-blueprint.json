@@ -1,0 +1,76 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Basic information about a user.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "email"]
+    },
+    "Character": {
+      "title": "Character Sheet",
+      "description": "A player character sheet.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "name": { "type": "string" },
+        "race": { "type": "string" },
+        "class": { "type": "string" },
+        "level": { "type": "number" },
+        "stats": {
+          "type": "object",
+          "properties": {
+            "str": { "type": "number" },
+            "dex": { "type": "number" },
+            "con": { "type": "number" },
+            "int": { "type": "number" },
+            "wis": { "type": "number" },
+            "cha": { "type": "number" }
+          }
+        },
+        "hp": { "type": "number" },
+        "maxHp": { "type": "number" },
+        "equipment": { "type": "array", "items": { "type": "string" } },
+        "spells": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "name", "race", "class"]
+    },
+    "Campaign": {
+      "title": "Campaign",
+      "description": "A game campaign managed by a GM.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "gmId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "worldNotes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["gmId", "name"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles."
+    },
+    "/characters/{characterId}": {
+      "schema": "Character",
+      "description": "Player characters."
+    },
+    "/campaigns/{campaignId}": {
+      "schema": "Campaign",
+      "description": "Game campaigns."
+    }
+  }
+}

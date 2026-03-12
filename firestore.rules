@@ -1,0 +1,117 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields:
+    //   - uid: string (required)
+    //   - displayName: string (required)
+    //   - email: string (required, PII)
+    //   - photoURL: string (optional)
+    //   - createdAt: string (required, ISO 8601)
+    //
+    // Collection: characters
+    // Fields:
+    //   - ownerId: string (required, immutable)
+    //   - name: string (required, 1-100 chars)
+    //   - race: string (required)
+    //   - class: string (required)
+    //   - level: number (required, 1-20)
+    //   - hp: number (required)
+    //   - maxHp: number (required)
+    //   - stats: map (required)
+    //   - equipment: list (required)
+    //   - spells: list (required)
+    //   - notes: string (optional)
+    //
+    // Collection: campaigns
+    // Fields:
+    //   - gmId: string (required, immutable)
+    //   - name: string (required, 1-100 chars)
+    //   - description: string (required)
+    //   - worldNotes: string (optional)
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "wagner.jewtransportes@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    // Domain Validators
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'createdAt']) &&
+             data.uid == request.auth.uid &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100 &&
+             isValidEmail(data.email) &&
+             isValidDateString(data.createdAt);
+    }
+
+    function isValidCharacter(data) {
+      return data.keys().hasAll(['ownerId', 'name', 'race', 'class', 'level', 'hp', 'maxHp', 'stats', 'equipment', 'spells']) &&
+             data.ownerId == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.level is number && data.level >= 1 && data.level <= 20 &&
+             data.stats is map &&
+             data.equipment is list &&
+             data.spells is list;
+    }
+
+    function isValidCampaign(data) {
+      return data.keys().hasAll(['gmId', 'name', 'description']) &&
+             data.gmId == request.auth.uid &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.description is string;
+    }
+
+    // User Profiles
+    match /users/{userId} {
+      // PII Protection: Only owner can read their own profile if it contains email
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+                      request.resource.data.email == resource.data.email; // Email immutable for now
+    }
+
+    // Characters
+    match /characters/{characterId} {
+      allow read: if isAuthenticated(); 
+      allow create: if isAuthenticated() && isValidCharacter(request.resource.data);
+      allow update: if isAuthenticated() && (resource.data.ownerId == request.auth.uid) && 
+                      isValidCharacter(request.resource.data) &&
+                      request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if isAuthenticated() && (resource.data.ownerId == request.auth.uid);
+    }
+
+    // Campaigns
+    match /campaigns/{campaignId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidCampaign(request.resource.data);
+      allow update: if isAuthenticated() && (resource.data.gmId == request.auth.uid) && 
+                      isValidCampaign(request.resource.data) &&
+                      request.resource.data.gmId == resource.data.gmId;
+      allow delete: if isAuthenticated() && (resource.data.gmId == request.auth.uid);
+    }
+  }
+}

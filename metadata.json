@@ -1,0 +1,7 @@
+{
+  "name": "Mythic Forge RPG",
+  "description": "Uma plataforma abrangente de RPG para Mestres criarem histórias e jogadores forjarem personagens lendários, alimentada pelas APIs Open5e e D&D 5e.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
